@@ -1,0 +1,627 @@
+<template>
+  <div class="layout-child-page-container">
+    <div class="layout-child-page-content" style="flex: 1; display: block" v-loading="loading">
+      <div>
+        <el-button plain icon="ArrowLeft" @click="emit('close')">返回</el-button>
+      </div>
+
+      <CustomTitle title="基础信息" :showShortBar="false">
+        <el-button link type="primary" @click="isBaseInfoCollapsed = !isBaseInfoCollapsed">
+          {{ isBaseInfoCollapsed ? "展开" : "收起" }}
+        </el-button>
+      </CustomTitle>
+      <el-collapse-transition>
+        <div v-show="!isBaseInfoCollapsed">
+          <CustomDescription :data="detailData || {}" :configs="baseInfoConfigs">
+            <template #mroNo-content>
+              <el-button link type="primary" size="small" @click="mroInfoVisible = true">
+                {{ detailData?.mroNo }}
+              </el-button>
+            </template>
+
+            <template #mroModelNo-content>
+              <el-button link type="primary" size="small" @click="mroModelInfoVisible = true">
+                {{ detailData?.mroModelNo }}
+              </el-button>
+            </template>
+
+            <template #mroName-content>
+              <el-button link type="primary" size="small" @click="mroModelInfoVisible = true">
+                {{ detailData?.mroName || detailData?.mroModelName }}
+              </el-button>
+            </template>
+          </CustomDescription>
+        </div>
+      </el-collapse-transition>
+
+      <CustomTitle title="处理反馈" :showShortBar="false" />
+      <el-tabs v-model="activeFeedbackTab" class="detail-tabs">
+        <el-tab-pane label="处理反馈" :name="EnumFeedbackTabs.Form">
+          <el-form
+            ref="formRef"
+            class="feedback-form"
+            label-width="100px"
+            :model="feedbackForm"
+            :rules="formRules"
+          >
+            <div class="feedback-grid">
+              <el-form-item label="故障描述" prop="faultDescription">
+                <el-input
+                  v-model.trim="feedbackForm.faultDescription"
+                  type="textarea"
+                  maxlength="200"
+                  show-word-limit
+                  :disabled="!canSubmitFeedback"
+                  placeholder="请输入故障描述"
+                />
+              </el-form-item>
+
+              <el-form-item label="故障分析" prop="analysis">
+                <el-input
+                  v-model.trim="feedbackForm.analysis"
+                  type="textarea"
+                  maxlength="200"
+                  show-word-limit
+                  :disabled="!canSubmitFeedback"
+                  placeholder="请输入故障分析"
+                />
+              </el-form-item>
+
+              <el-form-item label="解决措施" prop="solutionMeasures">
+                <el-input
+                  v-model.trim="feedbackForm.solutionMeasures"
+                  type="textarea"
+                  maxlength="200"
+                  show-word-limit
+                  :disabled="!canSubmitFeedback"
+                  placeholder="请输入解决措施"
+                />
+              </el-form-item>
+
+              <el-form-item label="结果" prop="solution">
+                <el-select
+                  v-model="feedbackForm.solution"
+                  class="w-full"
+                  :disabled="!canSubmitFeedback"
+                  placeholder="请选择结果"
+                >
+                  <el-option
+                    v-for="item in resultOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
+            </div>
+          </el-form>
+
+          <div class="feedback-action">
+            <div>
+              <span v-show="showSubmitButton && !canSubmitFeedback" class="submit-tip">
+                {{ submitDisableReason }}
+              </span>
+            </div>
+
+            <el-button
+              v-show="showSubmitButton"
+              type="primary"
+              :loading="submitLoading"
+              :disabled="!canSubmitFeedback"
+              @click="onSubmitFeedback"
+            >
+              提交反馈
+            </el-button>
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="异常工单附件" :name="EnumFeedbackTabs.Attachments">
+          <div class="attachment-box">
+            <div class="attachment-operation" v-if="showSubmitButton">
+              <UploadFile
+                v-model="attachmentList"
+                :limit="10"
+                :show-tip="false"
+                :show-file-list="false"
+                multiple
+                @success="onUploadSuccess"
+              >
+                <el-button icon="Upload" plain :disabled="!canSubmitFeedback">上传附件</el-button>
+              </UploadFile>
+            </div>
+
+            <el-table :data="attachmentTableData" border class="attachment-table">
+              <el-table-column
+                prop="fileName"
+                label="文件名"
+                min-width="220"
+                show-overflow-tooltip
+              />
+              <el-table-column label="操作" width="160" align="center" fixed="right">
+                <template #default="{ row, $index }">
+                  <el-button link type="primary" @click="onDownloadAttachment(row)">下载</el-button>
+                  <el-button
+                    v-if="showSubmitButton"
+                    link
+                    type="danger"
+                    :disabled="!canSubmitFeedback"
+                    @click="onDeleteAttachment($index)"
+                  >
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+
+      <CustomTitle title="异常明细" :showShortBar="false" />
+      <el-table :data="sourceItemList" border class="source-table">
+        <el-table-column prop="inspectionName" label="校验项名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="inspectionNo" label="校验项编号" min-width="160" show-overflow-tooltip />
+        <el-table-column label="校验结果" min-width="100" align="center">
+          <template #default="{ row }">
+            {{
+              EnumMROInspectionTaskResultMap[row.inspectionResult as EnumMROInspectionTaskResult] || "-"
+            }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="inspectionMethod" label="探测方式" min-width="140" show-overflow-tooltip />
+        <el-table-column label="检验标准类型" min-width="120" align="center">
+          <template #default="{ row }">
+            {{
+              EnumMROInspectionStandardTypeMap[
+                row?.inspectionStandard?.standardType as EnumMROInspectionStandardType
+              ] || "-"
+            }}
+          </template>
+        </el-table-column>
+        <el-table-column label="检验标准" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ typeNumberHandle(row?.inspectionStandard as any) || "-" }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="practicalValue" label="实测值" min-width="100" />
+        <el-table-column label="单位" width="100" align="center">
+          <template #default="{ row }">
+            {{ row?.inspectionStandard?.unitName || "-" }}
+          </template>
+        </el-table-column>
+        <el-table-column label="校验人" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ formatEmployeeNames(row?.inspectionUsers) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="inspectionTime" label="校验时间" min-width="160" align="center" />
+        <el-table-column prop="remarks" label="备注" min-width="180" show-overflow-tooltip />
+        <el-table-column label="上传图片" min-width="180">
+          <template #default="{ row }">
+            <div v-if="row?.remarkFiles?.length" class="img-list">
+              <el-image
+                v-for="item in row.remarkFiles"
+                :key="item.id"
+                :preview-src-list="[formatImgUrlPreview(item.path)]"
+                :src="formatImgUrlPreview(item.path)"
+                preview-teleported
+                class="w-[50px] h-[50px]"
+                fit="contain"
+              />
+            </div>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+
+    <div class="layout-footer">
+      <div class="footer-right">
+        <el-button @click="emit('close')">关闭</el-button>
+      </div>
+    </div>
+
+    <MroInfoDialog v-model="mroInfoVisible" :mro-id="detailData?.mroInformationId || ''" />
+
+    <MroModelInfoDialog
+      v-model="mroModelInfoVisible"
+      :mro-model-id="detailData?.mroModelId || ''"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ElMessage, type FormInstance, type FormRules } from "element-plus"
+
+import { fileDownloadHandle } from "@/api/fileResource"
+import {
+  queryMroVerifyExceptionTaskDetail,
+  requestFeedbackMroVerifyExceptionTask
+} from "@/api/operation/mro/mro-verify-exception-task"
+import {
+  queryMroInspectionTaskItemDetail,
+  queryMroInspectionTaskItemPageList
+} from "@/api/operation/mro/mro-verify-task"
+import CustomDescription from "@/components/CustomDescription/index.vue"
+import CustomTitle from "@/components/CustomTitle/index.vue"
+import UploadFile from "@/components/UploadFile/index.vue"
+import {
+  EnumMROInspectionExceptionStatus,
+  EnumMROInspectionExceptionStatusMap,
+  EnumMROInspectionFeedbackSolution,
+  EnumMROInspectionStandardType,
+  EnumMROInspectionStandardTypeMap,
+  EnumMROInspectionTaskResult,
+  EnumMROInspectionTaskResultMap
+} from "@/constant/enums"
+import useButtonAuth, { AuthType } from "@/hooks/useButtonAuth"
+import useUserStore from "@/store/modules/user"
+import type { IFile } from "@/types/base-info/implement-config"
+import type { IMroVerifyExceptionTaskPageListItem } from "@/types/maintain/mro-manage/mro-verify-exception-task"
+import type { IMroInspectionTaskItem } from "@/types/maintain/mro-manage/mro-verify-task"
+import { formatImgUrlPreview } from "@/utils/common"
+import { typeNumberHandle } from "@/utils/inspectStandard"
+import MroInfoDialog from "@/views/MROManage/MROInfo/components/MroInfoDialog.vue"
+import MroModelInfoDialog from "@/views/MROManage/MROModelManage/components/MroModelInfoDialog.vue"
+
+type IAttachmentRow = IFile & {
+  path?: string
+}
+
+const props = withDefaults(
+  defineProps<{
+    id: string
+  }>(),
+  {}
+)
+const emit = defineEmits<{
+  (e: "close"): void
+  (e: "success"): void
+}>()
+
+const userStore = useUserStore()
+const authType = useButtonAuth("VerifyAbnormalOrders_update", "VerifyAbnormalOrders_query")
+
+const loading = ref(false)
+const submitLoading = ref(false)
+const formRef = ref<FormInstance>()
+const isBaseInfoCollapsed = ref(false)
+const mroInfoVisible = ref(false)
+const mroModelInfoVisible = ref(false)
+
+const detailData = ref<IMroVerifyExceptionTaskPageListItem>()
+const sourceItemList = ref<IMroInspectionTaskItem[]>([])
+const attachmentList = ref<IAttachmentRow[]>([])
+
+enum EnumFeedbackTabs {
+  Form = "form",
+  Attachments = "attachments"
+}
+
+const activeFeedbackTab = ref<EnumFeedbackTabs>(EnumFeedbackTabs.Form)
+
+const resultOptions = [
+  { label: "已解决", value: EnumMROInspectionFeedbackSolution.UNOBSTRUCTED },
+  { label: "维修", value: EnumMROInspectionFeedbackSolution.REPAIR },
+  { label: "报废", value: EnumMROInspectionFeedbackSolution.SCRAP }
+]
+
+const feedbackForm = reactive({
+  faultDescription: "",
+  analysis: "",
+  solutionMeasures: "",
+  solution: undefined as EnumMROInspectionFeedbackSolution | undefined
+})
+
+const formRules: FormRules = {
+  faultDescription: [{ required: false, message: "请填写故障描述", trigger: "blur" }],
+  analysis: [{ required: false, message: "请填写故障分析", trigger: "blur" }],
+  solution: [{ required: true, message: "请选择结果", trigger: "change" }]
+}
+
+const currentEmpId = computed(() => String((userStore.userInfo as any)?.empId || ""))
+const isPending = computed(
+  () => Number(detailData.value?.taskStatus) === EnumMROInspectionExceptionStatus.PENDING
+)
+const hasResponsibleUsers = computed(() => Boolean(detailData.value?.responsibleUsers?.length))
+const isCurrentResponsible = computed(() => {
+  if (!currentEmpId.value) return false
+  return true
+})
+const showSubmitButton = computed(() => authType.value !== AuthType.View && isPending.value)
+const canSubmitFeedback = computed(
+  () => showSubmitButton.value && hasResponsibleUsers.value && isCurrentResponsible.value
+)
+const submitDisableReason = computed(() => {
+  if (!hasResponsibleUsers.value) return "未指派责任人，无法提交反馈"
+  if (!isCurrentResponsible.value) return "仅当前指派责任人可提交反馈"
+  return ""
+})
+
+const formatEmployeeNames = (list?: { name?: string }[]) =>
+  list
+    ?.map((item) => item?.name)
+    .filter(Boolean)
+    .join(",") || "-"
+
+const formatEmployeeNos = (list?: { empNo?: string }[]) =>
+  list
+    ?.map((item) => item?.empNo)
+    .filter(Boolean)
+    .join(",") || "-"
+
+const formatExceptionHandlePosition = () => {
+  const names = (detailData.value?.exceptionHandlePositionList || [])
+    .map((item) => [item.depName, item.positionName].filter(Boolean).join("-"))
+    .filter(Boolean)
+  if (names.length) return names.join(",")
+  return detailData.value?.exceptionHandlePositionName || "-"
+}
+
+const baseInfoConfigs = ref([
+  { field: "taskNo", label: "异常单号：" },
+  {
+    field: "taskStatus",
+    label: "状态：",
+    formatter: () =>
+      EnumMROInspectionExceptionStatusMap[
+        detailData.value?.taskStatus as EnumMROInspectionExceptionStatus
+      ]
+  },
+  { field: "createTime", label: "生成时间：" },
+  {
+    field: "source",
+    label: "来源：",
+    formatter: () => "MRO校验"
+  },
+  { field: "sourceNo", label: "来源单号：" },
+  {
+    field: "mroNo",
+    label: "MRO序列号：",
+    slots: { content: "mroNo-content" }
+  },
+  {
+    field: "mroModelNo",
+    label: "MRO编号：",
+    slots: { content: "mroModelNo-content" }
+  },
+  {
+    field: "mroName",
+    label: "MRO名称：",
+    slots: { content: "mroName-content" }
+  },
+  { field: "mroSpec", label: "MRO规格：" },
+  { field: "mroClassifyName", label: "MRO分类：" },
+  { field: "mroTypeName", label: "MRO类型：" },
+  {
+    field: "reportUserName",
+    label: "报修人名称：",
+    formatter: () => formatEmployeeNames(detailData.value?.reportUsers)
+  },
+  {
+    field: "reportUserId",
+    label: "报修人工号：",
+    formatter: () => formatEmployeeNos(detailData.value?.reportUsers)
+  },
+  {
+    field: "exceptionHandlePositionName",
+    label: "异常处理职位：",
+    formatter: () => formatExceptionHandlePosition()
+  },
+  {
+    field: "responsibleUserName",
+    label: "责任人姓名：",
+    formatter: () => formatEmployeeNames(detailData.value?.responsibleUsers)
+  },
+  {
+    field: "responsibleUserId",
+    label: "责任人工号：",
+    formatter: () => formatEmployeeNos(detailData.value?.responsibleUsers)
+  },
+  {
+    field: "handleUserName",
+    label: "处理人姓名：",
+    formatter: () => formatEmployeeNames(detailData.value?.handleUsers)
+  },
+  {
+    field: "handleUserId",
+    label: "处理人工号：",
+    formatter: () => formatEmployeeNos(detailData.value?.handleUsers)
+  }
+])
+
+const attachmentTableData = computed(() => attachmentList.value)
+
+const syncFeedbackData = () => {
+  feedbackForm.faultDescription = String(detailData.value?.faultDescription || "")
+  feedbackForm.analysis = String(detailData.value?.analysis || "")
+  feedbackForm.solutionMeasures = String(detailData.value?.solutionMeasures || "")
+  const solutionValue = Number(detailData.value?.solution || 0)
+  feedbackForm.solution =
+    solutionValue > 0 ? (solutionValue as EnumMROInspectionFeedbackSolution) : undefined
+
+  attachmentList.value = (detailData.value?.attachmentFileList || []).map((item) => ({
+    fileId: String(item.fileId || item.deploymentId || item.id || ""),
+    fileName: String(item.fileName || item.sourceName || "未命名附件"),
+    size: Number(item.size || 0),
+    path: String(item.path || "")
+  }))
+}
+
+const init = async () => {
+  loading.value = true
+  try {
+    await getVerifyErrorOrderDetail()
+    syncFeedbackData()
+    await getSourceItemList()
+  } finally {
+    loading.value = false
+  }
+}
+
+const getVerifyErrorOrderDetail = async () => {
+  const data = await queryMroVerifyExceptionTaskDetail({ id: props.id })
+  detailData.value = data
+}
+
+const getSourceItemList = async () => {
+  sourceItemList.value = []
+  const sourceNo = String(detailData.value?.sourceNo || "")
+  if (sourceNo) {
+    const pageData = await queryMroInspectionTaskItemPageList({
+      pageQuery: {
+        pageNum: 1,
+        pageSize: 1000
+      },
+      queryParam: {
+        inspectionNo: sourceNo
+      }
+    })
+    if (pageData?.records?.length) {
+      sourceItemList.value = pageData.records
+      return
+    }
+  }
+
+  if (detailData.value?.sourceId) {
+    const data = await queryMroInspectionTaskItemDetail(detailData.value.sourceId)
+    sourceItemList.value = data ? [data] : []
+  }
+}
+
+const onUploadSuccess = () => {
+  attachmentList.value = attachmentList.value.map((item) => ({
+    ...item,
+    path: item.path || ""
+  }))
+}
+
+const onDeleteAttachment = (index: number) => {
+  attachmentList.value.splice(index, 1)
+}
+
+const onDownloadAttachment = async (row: IAttachmentRow) => {
+  if (row.path) {
+    const link = document.createElement("a")
+    link.href = new URL(row.path, window.location.origin).toString()
+    link.download = row.fileName || "download"
+    link.style.display = "none"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    return
+  }
+
+  const fileId = String(row.fileId || "")
+  if (!fileId) return
+  await fileDownloadHandle(fileId, row.fileName || "download")
+}
+
+const onSubmitFeedback = async () => {
+  if (!showSubmitButton.value) return
+  if (!canSubmitFeedback.value) {
+    ElMessage.error(submitDisableReason.value || "当前无权限提交反馈")
+    return
+  }
+
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  const responsibleUserIds = (detailData.value?.responsibleUsers || [])
+    .map((item) => String(item.id || ""))
+    .filter(Boolean)
+  if (!responsibleUserIds.length) {
+    ElMessage.error("请先指派责任人后再反馈")
+    return
+  }
+
+  submitLoading.value = true
+  try {
+    await requestFeedbackMroVerifyExceptionTask({
+      id: props.id,
+      faultDescription: feedbackForm.faultDescription,
+      analysis: feedbackForm.analysis,
+      solutionMeasures: feedbackForm.solutionMeasures,
+      solution: Number(feedbackForm.solution),
+      remarks: feedbackForm.faultDescription,
+      handleUserIds: responsibleUserIds,
+      responsibleUserIds,
+      scrapFileIds: attachmentList.value.map((item) => String(item.fileId || "")).filter(Boolean)
+    })
+    ElMessage.success("提交成功")
+    await init()
+    emit("success")
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+onMounted(() => {
+  init()
+})
+</script>
+
+<style lang="scss" scoped>
+.detail-tabs,
+.source-table {
+  margin-bottom: 16px;
+}
+
+.feedback-form {
+  padding-right: 8px;
+}
+
+.feedback-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+
+  :deep(.el-form-item) {
+    margin-bottom: 12px;
+  }
+}
+
+.feedback-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.attachment-box {
+  width: 100%;
+}
+
+.attachment-operation {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.img-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.layout-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.footer-right {
+  display: flex;
+  gap: 8px;
+}
+
+.submit-tip {
+  color: var(--el-color-warning);
+  font-size: 12px;
+}
+
+@media (max-width: 1280px) {
+  .feedback-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

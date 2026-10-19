@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.netlify
+.DS_Store
+dist
+dist-ssr
+coverage
+*.local
+Dockerfile
+.dockerignore
+!Dockerfile
+!.dockerignore
+
+/cypress/videos/
+/cypress/screenshots/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.cursor/*
+
+# Browser validation artifacts
+.edge-headless-profile/
+.edge-op-model.png
+edge-4173-home.html
+edge-4173-home.png

@@ -1,0 +1,310 @@
+// 项目中一些公共布局样式
+body {
+  // 搜索项是一行还是多行
+  --router-page-table-height-1: calc(100vh - 316px);
+  --router-page-table-height-2: calc(100vh - 366px);
+
+  // 树右侧操作项颜色
+  --tree-right-icon-color: #96979a;
+}
+
+// #region 自定义的一些通用类
+// 页面容器
+.pageContainer {
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  background-color: #fff;
+}
+
+.no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// infoTitle infoContent :::  title: desc 的布局展示
+.infoTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333333;
+  margin-right: 12px;
+  width: 100px;
+  text-align: right;
+}
+.infoContent {
+  font-size: 14px;
+  color: #666666;
+}
+
+// 公共的表单搜索样式
+.searchCard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 24px 20px;
+  border-bottom: 1px solid #e8e8e8;
+
+  form {
+    flex: 1 1 0%;
+    box-sizing: border-box;
+    display: flex;
+    /* flex-wrap: wrap; */
+    flex-direction: column;
+    gap: 16px;
+
+    .el-form-item {
+      margin-bottom: 0px;
+    }
+  }
+
+  &-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    column-gap: 16px;
+    row-gap: 12px;
+    box-sizing: border-box;
+  }
+  &-rowGrid {
+    // 遇见label 长度不一的，可以设置统一的label-width 宽度，如设备维修单页面
+    // <el-form :model="searchForm" label-width="80px">
+    display: grid;
+    // 默认三列，如果筛选项只有四项，可以后面接rowGrid4 类。
+    // 直接使用tailwindcss 会被覆盖
+    grid-template-columns: repeat(3, 1fr);
+    grid-column-gap: 16px;
+    grid-row-gap: 12px;
+    box-sizing: border-box;
+    // 如果el-form 上有标明inline 属性建议去除，此外，内部的组件也需要设置宽度为100%，
+    // 有行内样式写的固定宽度的去除
+    .el-select {
+      width: 100%;
+    }
+    .el-date-editor {
+      width: 100%;
+    }
+    .el-cascader {
+      width: 100%;
+    }
+  }
+  &-rowFlex {
+    display: flex;
+  }
+  .rowGrid4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .rowGrid5 {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .rowGrid2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  &-vRight {
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    justify-content: center;
+    margin-left: 12px;
+    border-left: 1px solid #dcdfe6ff;
+    padding-left: 12px;
+    row-gap: 12px;
+    button {
+      width: 100px;
+    }
+    .el-button + .el-button {
+      margin-left: 0px;
+    }
+  }
+
+  &-formItem {
+    flex: 1 1 0%;
+  }
+
+  &-right {
+    margin-left: 32px;
+  }
+
+  &-verticalRight {
+    display: flex;
+    flex-direction: column;
+    align-content: space-around;
+    justify-content: center;
+    border-left: 1px solid #dcdfe6ff;
+
+    button {
+      width: 80px;
+      height: 16px;
+      box-sizing: content-box;
+      margin-left: 12px !important;
+      margin-bottom: 10px;
+    }
+  }
+}
+
+// 标题样式
+.title-1 {
+  font-size: 16px;
+  font-family:
+    PingFang SC-Medium,
+    PingFang SC;
+  font-weight: 500;
+  color: #000000;
+  line-height: 24px;
+}
+
+.custom-scrollbar {
+  &::-webkit-scrollbar {
+    height: 6px;
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(204, 204, 204, 0.3);
+    border-radius: 10px;
+  }
+}
+
+// 默认滚动条
+/*定义滚动条高宽及背景 高宽分别对应横竖滚动条的尺寸*/
+::-webkit-scrollbar {
+  width: 6px;
+  height: 8px;
+  background-color: transparent;
+}
+
+/*定义滚动条轨道 内阴影+圆角*/
+::-webkit-scrollbar-track {
+  border-radius: 5px;
+}
+
+/*定义滑块 内阴影+圆角*/
+::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: rgba(204, 204, 204, 0.3);
+}
+
+/*定义滚动条 xy轴的交叉点*/
+::-webkit-scrollbar-corner {
+  background: #eee;
+}
+
+// 左右布局，左侧tree，右侧内容
+.treeContent {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  .treeContent-left {
+    height: 100%;
+    border-right: 1px solid #e8e8e8;
+    width: 292px;
+    overflow-y: scroll;
+    overflow-x: scroll;
+    padding-top: 14px;
+    padding-left: 12px;
+    padding-right: 12px;
+    @extend .no-scrollbar;
+  }
+  .treeContent-right {
+    flex: 1;
+    overflow-y: hidden;
+    height: 100%;
+    position: relative;
+    &-container {
+      height: 100%;
+      overflow-y: scroll;
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
+  }
+}
+.selectInput {
+  width: 100%;
+  :deep(.el-input__wrapper) {
+    cursor: pointer;
+  }
+  :deep(input) {
+    cursor: pointer;
+  }
+}
+// 标题和表格区域的边距
+.titleTableBox {
+  padding: 0 20px;
+}
+// 在搜索框和表格之间的title 及按钮样式
+.rowTitleButton {
+  display: flex;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  &-title {
+    @extend .title-1;
+  }
+}
+
+// #endregion
+
+// #region 覆盖element-plus 的样式
+.el-drawer__header {
+  margin-bottom: 12px;
+}
+.el-dialog__footer,
+.el-drawer__footer {
+  border-top: 1px solid #e8e8e8;
+}
+
+.el-dialog__header {
+  padding-right: 16px;
+  margin-right: 0px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.el-drawer__header {
+  border-bottom: 1px solid #e8e8e8;
+  margin-bottom: 0;
+  padding-bottom: 12px;
+}
+
+.el-overlay-dialog {
+  border-radius: 10px;
+}
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: #f1f3f9;
+}
+.el-table {
+  --el-table-header-bg-color: #f1f3f9;
+}
+
+// #endregion
+
+//  #region 嵌套子页面标题样式
+.detailTitle {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  position: relative;
+  padding-left: 12px;
+  height: 24px;
+  font-family:
+    PingFang SC,
+    PingFang SC;
+  font-weight: 500;
+  font-size: 16px;
+  color: #303133;
+  line-height: 24px;
+  text-align: left;
+  &::before {
+    width: 4px;
+    height: 24px;
+    background: #303133;
+    display: block;
+    position: absolute;
+    left: 0;
+    content: "";
+  }
+}
